@@ -33,7 +33,7 @@ spotify['released_month'] = pd.to_datetime(spotify['released_month'], format='%m
 
 # Set up the Streamlit app
 st.set_page_config(layout="wide")  # Set the layout to wide mode
-st.markdown('#### Spotify User Preferences Dashboard')
+st.title('Spotify User Preferences Dashboard')
 
 
 # Define columns layout
