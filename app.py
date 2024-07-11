@@ -8,14 +8,15 @@ import scipy.cluster.hierarchy as sch
 spotify = pd.read_csv("spotify-2023.csv", encoding='ISO-8859-1')
 
 # Remove strange row
-spotify.drop(574, inplace=True)
+spotify.drop(574,inplace=True)
 
 # Convert streams, in_shazam_charts and in_deezer_playlists columns to numeric type
 spotify["streams"] = pd.to_numeric(spotify['streams'], errors='coerce')
 spotify["in_deezer_playlists"] = pd.to_numeric(spotify['in_deezer_playlists'].str.replace(",", ""), errors='coerce')
 spotify["in_shazam_charts"] = pd.to_numeric(spotify['in_shazam_charts'], errors='coerce')
 
-# Remove released_day column (not relevant) and key column (too many missing values)
+
+# Remove released_day column(not relevant) and key column(too many missing values)
 spotify.drop(columns=['released_day', "key"], inplace=True)
 
 # Convert each percentage column to a range between 0 and 1
@@ -26,27 +27,9 @@ for column in percentage_columns:
 # Fill all null values in the 'in_shazam_charts' column with 0
 spotify['in_shazam_charts'].fillna(0, inplace=True)
 
+
 # Convert the 'released_month' column from numbers to month names
 spotify['released_month'] = pd.to_datetime(spotify['released_month'], format='%m').dt.strftime('%B')
-
-# Create a new 'decade' column
-spotify['decade'] = (spotify['released_year'] // 10) * 10
-spotify['decade'] = spotify['decade'].astype(str) + "'s"
-
-# Calculate column statistics
-column_stats = []
-for column in spotify.columns:
-    if pd.api.types.is_numeric_dtype(spotify[column]):
-        min_value = spotify[column].min()
-        max_value = spotify[column].max()
-        unique_count = spotify[column].nunique()
-        column_stats.append({
-            'column': column,
-            'min_value': min_value,
-            'max_value': max_value,
-            'unique_values': unique_count
-        })
-stats_df = pd.DataFrame(column_stats)
 
 # Set up the Streamlit app
 st.set_page_config(layout="wide")  # Set the layout to wide mode
@@ -58,7 +41,13 @@ col1, empty, col2= st.columns([2, 0.1, 2])
 with col1:
     st.markdown('### Top 10 Most Popular Artists by Streams')
     # Most Popular Artists
-    artist_popularity = spotify.groupby('artist(s)_name')['streams'].sum().reset_index()
+    min_year, max_year = st.slider('Select Year Range for Bar Chart', min_value=int(spotify['released_year'].min()),
+                                   max_value=int(spotify['released_year'].max()),
+                                   value=(int(spotify['released_year'].min()), int(spotify['released_year'].max())))
+    filtered_data_bar = spotify[(spotify['released_year'] >= min_year) & (spotify['released_year'] <= max_year)]
+
+    # Most Popular Artists
+    artist_popularity = filtered_data_bar.groupby('artist(s)_name')['streams'].sum().reset_index()
     artist_popularity = artist_popularity.sort_values(by='streams', ascending=False).head(10)
     artist_popularity['streams_billions'] = artist_popularity['streams'] / 1e9
     bar_fig = px.bar(
@@ -72,19 +61,28 @@ with col1:
     )
     bar_fig.update_layout(
         yaxis={'categoryorder': 'total ascending'},
-        height=400# Reduce height
+        height=400  # Reduce height
     )
     bar_fig.update_traces(marker=dict(line=dict(color='#000000', width=1)))
     st.plotly_chart(bar_fig, use_container_width=True)
 
-    st.markdown('### Distribution of Streams by Month')
+    st.markdown("### Distribution of Streams by Song's Release Month")
     # Define month names
-    month_names = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
-    spotify['released_month'] = pd.Categorical(spotify['released_month'], categories=month_names, ordered=True)
+    min_year_box, max_year_box = st.slider('Select Year Range for Box Plot',
+                                           min_value=int(spotify['released_year'].min()),
+                                           max_value=int(spotify['released_year'].max()), value=(
+        int(spotify['released_year'].min()), int(spotify['released_year'].max())), key='box_slider')
+    filtered_data_box = spotify[(spotify['released_year'] >= min_year_box) & (spotify['released_year'] <= max_year_box)]
+
+    # Define month names
+    month_names = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October',
+                   'November', 'December']
+    filtered_data_box['released_month'] = pd.Categorical(filtered_data_box['released_month'], categories=month_names,
+                                                         ordered=True)
 
     # Box Plot for Streams by Month
     box_fig_month = px.box(
-        spotify,
+        filtered_data_box,
         y='released_month',
         x='streams',
         category_orders={'released_month': month_names},  # Ensure months are ordered correctly
@@ -98,7 +96,7 @@ with col1:
         yaxis_categoryarray=month_names[::-1],  # Reverse the order of the months
         yaxis_title=None,
         height=700,
-        width=700# Reduce height
+        width=700  # Reduce height
     )
 
     st.plotly_chart(box_fig_month, use_container_width=True)
@@ -106,7 +104,6 @@ with col1:
 with col2:
     st.markdown('### Sum of Spotify Charts by Energy and Valence Combinations')
 
-    # Define bin edges and labels with ranges
     energy_bins = [0, 0.2, 0.4, 0.6, 0.8, 1.0]
     energy_labels = ['Very Low (0-0.2)', 'Low (0.2-0.4)', 'Medium (0.4-0.6)', 'High (0.6-0.8)', 'Very High (0.8-1.0)']
     valence_bins = [0, 0.2, 0.4, 0.6, 0.8, 1.0]
@@ -125,7 +122,8 @@ with col2:
         x='energy_bins',
         y='in_spotify_charts',
         color='valence_bins',
-        labels={'energy_bins': 'Energy Levels', 'in_spotify_charts': 'Sum of Spotify Charts', 'valence_bins': 'Valence Levels'},
+        labels={'energy_bins': 'Energy Levels', 'in_spotify_charts': 'Sum of Spotify Charts',
+                'valence_bins': 'Valence Levels'},
         markers=True,
         line_shape='linear'
     )
@@ -183,7 +181,7 @@ with col2:
     st.plotly_chart(facet_fig)
 
 
-st.markdown('#### Clustered Correlation Heatmap of Song Success Across Different Platforms')
+st.markdown('#### Correlation Heatmap of Song Success Across Different Platforms')
 
 
 columns = [
