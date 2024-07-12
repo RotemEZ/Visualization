@@ -14,9 +14,9 @@ spotify["in_deezer_playlists"] = pd.to_numeric(spotify['in_deezer_playlists'].st
 spotify["in_shazam_charts"] = pd.to_numeric(spotify['in_shazam_charts'], errors='coerce')
 
 
-# Remove released_day and artist_count columns (not relevant), key column(too many missing values)
+# Remove released_day, artist_count, mode columns (not relevant), key column(too many missing values)
 # Remove instrumentalness_%, liveness_%, speechiness_% columns(not relevant a significant amount of low values)
-spotify.drop(columns=['released_day', "key", 'instrumentalness_%', 'liveness_%', 'speechiness_%', 'artist_count'], inplace=True)
+spotify.drop(columns=['released_day', "key", 'instrumentalness_%', 'liveness_%', 'speechiness_%', 'artist_count', 'mode'], inplace=True)
 
 # Convert each percentage column to a range between 0 and 1
 percentage_columns = ['danceability_%', 'valence_%', 'energy_%', 'acousticness_%']
