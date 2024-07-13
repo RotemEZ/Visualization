@@ -72,67 +72,64 @@ with col1:
     )
     bar_fig.update_layout(
         yaxis={'categoryorder': 'total ascending'},
-        height=400  
+        height=400
     )
     bar_fig.update_traces(marker=dict(line=dict(color='#000000', width=1)))
     st.plotly_chart(bar_fig, use_container_width=True)
 
     st.markdown("### Distribution of Streams by Song's Release Month")
     # Define month names
-    min_year_box, max_year_box = st.slider('Select Year Range for Box Plot',
-                                           min_value=int(spotify['released_year'].min()),
-                                           max_value=int(spotify['released_year'].max()), value=(
-        int(spotify['released_year'].min()), int(spotify['released_year'].max())), key='box_slider')
-    filtered_data_box = spotify[(spotify['released_year'] >= min_year_box) & (spotify['released_year'] <= max_year_box)]
-
-    # Define month names
     month_names = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October',
                    'November', 'December']
-    filtered_data_box['released_month'] = pd.Categorical(filtered_data_box['released_month'], categories=month_names,
-                                                         ordered=True)
+
+    selected_months = st.multiselect('Select Months', month_names, default=month_names)
+
+    filtered_data_box = spotify[spotify['released_month'].isin(selected_months)]
+    filtered_data_box['released_month'] = pd.Categorical(filtered_data_box['released_month'],
+                                                         categories=selected_months, ordered=True)
 
     # Box Plot for Streams by Month
     box_fig_month = px.box(
         filtered_data_box,
         y='released_month',
         x='streams',
-        category_orders={'released_month': month_names},  # Ensure months are ordered correctly
-        color_discrete_sequence=['purple']  # Set color to purple
+        category_orders={'released_month': selected_months},
+        color_discrete_sequence=['purple']
     )
 
-    # Update layout for better readability and increase spacing between categories
     box_fig_month.update_layout(
         yaxis_tickangle=0,
         yaxis_categoryorder='array',
-        yaxis_categoryarray=month_names[::-1],  # Reverse the order of the months
         yaxis_title=None,
-        height=900,
-        width=700  
+        height=850,
+        width=700
     )
 
     st.plotly_chart(box_fig_month, use_container_width=True)
 
 with col2:
-    st.markdown('### Sum of Spotify Charts by Energy and Valence Combinations')
+    st.markdown('### Average of Spotify Charts by Energy and Valence Combinations')
 
     # Group by combinations of energy and valence bins and calculate the sum of charts
-    combination_charts_sum = spotify.groupby(['energy level', 'valence level'])['in_spotify_charts'].sum().reset_index()
+    # Group by combinations of energy and valence bins and calculate the average of charts
+    combination_charts_avg = spotify.groupby(['energy level', 'valence level'])[
+        'in_spotify_charts'].mean().reset_index()
 
-    # Create the line plot with sum of charts
-    line_combination_fig_sum = px.line(
-        combination_charts_sum,
+    # Create the line plot with average of charts
+    line_combination_fig_avg = px.line(
+        combination_charts_avg,
         x='energy level',
         y='in_spotify_charts',
         color='valence level',
-        labels={'energy level': 'Energy Levels', 'in_spotify_charts': 'Sum of Spotify Charts',
+        labels={'energy level': 'Energy Levels', 'in_spotify_charts': 'Average of Spotify Charts',
                 'valence level': 'Valence Levels'},
         markers=True,
         line_shape='linear'
     )
 
     # Update the layout to expand the figure width
-    line_combination_fig_sum.update_layout(
-        width=1000, height=600,  
+    line_combination_fig_avg.update_layout(
+        width=1000, height=700,
         xaxis=dict(
             title='Energy Levels',
             tickmode='array',
@@ -146,29 +143,32 @@ with col2:
         )
     )
 
-    st.plotly_chart(line_combination_fig_sum, use_container_width=True)
+    st.plotly_chart(line_combination_fig_avg, use_container_width=True)
 
     st.markdown('### Song Attribute vs. Number of Spotify Playlists')
 
     # Create Facet Scatter Plots
-    spotify_melted = spotify.melt(id_vars=['in_spotify_playlists'], value_vars=['danceability_%', 'bpm', 'acousticness_%'], var_name='attribute', value_name='value')
+    spotify_melted = spotify.melt(id_vars=['in_spotify_playlists', 'track_name'],
+                                  value_vars=['danceability_%', 'bpm', 'acousticness_%'], var_name='attribute',
+                                  value_name='value')
 
     facet_fig = px.scatter(
         spotify_melted,
         x='value',
         y='in_spotify_playlists',
         facet_row='attribute',
+        hover_data={'track_name': True, 'attribute': False},
         labels={
             'in_spotify_playlists': 'Number of Spotify Playlists',
-            'value': ''
-        },   category_orders={'attribute': ['danceability_%', 'bpm', 'acousticness_%']},
-        facet_row_spacing=0.15,
-)
+            'value': "Attribute's value",
+            'track_name': 'Song Name'
+        },
+        category_orders={'attribute': ['danceability_%', 'bpm', 'acousticness_%']},
+        facet_row_spacing=0.15
+    )
 
     facet_fig.update_traces(marker=dict(size=5, color='black'))
     facet_fig.update_xaxes(matches=None, showticklabels=True)
-
-
 
 
     # Update x-axis titles to show the attribute name
@@ -176,11 +176,14 @@ with col2:
         axis_title = facet_fig.layout.annotations[i]['text'].split('=')[1].capitalize().replace('_%', '')
         facet_fig.layout[f'xaxis{i + 1}']['title']['text'] = axis_title
 
+    facet_fig.for_each_annotation(lambda a: a.update(text=''))
+
     facet_fig.update_layout(
-        width=600,  
-        height=800  
+        width=600,
+        height=800
     )
-    st.plotly_chart(facet_fig)
+
+    st.plotly_chart(facet_fig, use_container_width=True)
 
 
 st.markdown('#### Correlation Heatmap of Song Success Across Different Platforms')
@@ -221,7 +224,7 @@ heatmap_fig.update_layout(
         yaxis_title='Features',
         xaxis=dict(side='bottom', tickangle=45, tickfont=dict(size=10)),
         yaxis=dict(tickfont=dict(size=10)),
-        margin=dict(l=100, r=20, t=50, b=150)  
+        margin=dict(l=100, r=20, t=50, b=150)
     )
 
 st.plotly_chart(heatmap_fig, use_container_width=True)
