@@ -109,8 +109,7 @@ with col1:
 
 with col2:
     st.markdown('### Average of Spotify Charts by Energy and Valence Combinations')
-
-    # Group by combinations of energy and valence bins and calculate the sum of charts
+    
     # Group by combinations of energy and valence bins and calculate the average of charts
     combination_charts_avg = spotify.groupby(['energy level', 'valence level'])[
         'in_spotify_charts'].mean().reset_index()
@@ -220,11 +219,25 @@ heatmap_fig = ff.create_annotated_heatmap(
     )
 
 heatmap_fig.update_layout(
-        xaxis_title='Features',
-        yaxis_title='Features',
-        xaxis=dict(side='bottom', tickangle=45, tickfont=dict(size=10)),
-        yaxis=dict(tickfont=dict(size=10)),
-        margin=dict(l=100, r=20, t=50, b=150)
-    )
+    xaxis_title=dict(
+        text='Features',
+        font=dict(size=17)
+    ),
+    yaxis_title=dict(
+        text='Features',
+        font=dict(size=17)
+    ),
+    xaxis=dict(
+        side='bottom',
+        tickangle=45,
+        tickfont=dict(size=13)
+    ),
+    yaxis=dict(
+        tickfont=dict(size=13)
+    ),
+    font=dict(
+        size=14),
+    margin=dict(l=100, r=20, t=20, b=70)
+)
 
 st.plotly_chart(heatmap_fig, use_container_width=True)
